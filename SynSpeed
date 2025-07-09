@@ -1,0 +1,131 @@
+-- SERVICES
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- GUI SETUP (same style)
+local screenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+screenGui.Name = "SynSpeedGui"
+
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 180, 0, 150)
+mainFrame.Position = UDim2.new(0.5, -90, 0.5, -75)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+
+local titleBar = Instance.new("Frame", mainFrame)
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+
+local titleLabel = Instance.new("TextLabel", titleBar)
+titleLabel.Text = "SynSpeed V1.0"
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 18
+titleLabel.TextColor3 = Color3.new(1, 1, 1)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Size = UDim2.new(1, -30, 1, 0)
+titleLabel.Position = UDim2.new(0, 10, 0, 0)
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local minimizeBtn = Instance.new("TextButton", titleBar)
+minimizeBtn.Size = UDim2.new(0, 30, 1, 0)
+minimizeBtn.Position = UDim2.new(1, -30, 0, 0)
+minimizeBtn.Text = "-"
+minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.TextSize = 24
+minimizeBtn.TextColor3 = Color3.new(1, 1, 1)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+minimizeBtn.BorderSizePixel = 0
+
+local contentFrame = Instance.new("Frame", mainFrame)
+contentFrame.Size = UDim2.new(1, 0, 1, -30)
+contentFrame.Position = UDim2.new(0, 0, 0, 30)
+contentFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+
+-- SPEEDHACK BUTTON
+local speedBtn = Instance.new("TextButton", contentFrame)
+speedBtn.Size = UDim2.new(0, 160, 0, 40)
+speedBtn.Position = UDim2.new(0, 10, 0, 20)
+speedBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+speedBtn.BorderSizePixel = 0
+speedBtn.Font = Enum.Font.GothamBold
+speedBtn.TextSize = 20
+speedBtn.TextColor3 = Color3.new(1,1,1)
+speedBtn.Text = "Enable SpeedHack"
+
+local minimized = false
+minimizeBtn.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	contentFrame.Visible = not minimized
+	mainFrame.Size = minimized and UDim2.new(0, 180, 0, 30) or UDim2.new(0, 180, 0, 150)
+end)
+
+-- SPEEDHACK VARIABLES
+local enabled = false
+local bv -- BodyVelocity object
+local heartbeatConn
+
+local function enableSpeedHack()
+	local character = LocalPlayer.Character
+	if not character then return end
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not hrp or not humanoid then return end
+
+	if bv then bv:Destroy() end
+	bv = Instance.new("BodyVelocity")
+	bv.MaxForce = Vector3.new(1e5, 0, 1e5) -- no vertical force, only horizontal
+	bv.P = 1e4
+	bv.Velocity = Vector3.new(0,0,0)
+	bv.Parent = hrp
+
+	heartbeatConn = RunService.Heartbeat:Connect(function()
+		if not bv or not hrp or not humanoid then return end
+
+		local moveDir = humanoid.MoveDirection
+		if moveDir.Magnitude > 0 then
+			-- Target speed (tweak this for speed, 50+ is fast)
+			local speed = 60
+
+			-- Smoothly lerp velocity towards moveDir * speed
+			local currentVel = bv.Velocity
+			local targetVel = moveDir.Unit * speed
+
+			-- Adding small oscillation for anti-cheat bypass
+			local oscillation = Vector3.new(
+				math.sin(tick()*10)*0.5,
+				0,
+				math.cos(tick()*10)*0.5
+			)
+
+			bv.Velocity = currentVel:Lerp(targetVel + oscillation, 0.3)
+		else
+			-- No movement input, slowly damp velocity to zero
+			bv.Velocity = bv.Velocity:Lerp(Vector3.new(0,0,0), 0.3)
+		end
+	end)
+end
+
+local function disableSpeedHack()
+	if heartbeatConn then
+		heartbeatConn:Disconnect()
+		heartbeatConn = nil
+	end
+	if bv then
+		bv:Destroy()
+		bv = nil
+	end
+end
+
+speedBtn.MouseButton1Click:Connect(function()
+	enabled = not enabled
+	if enabled then
+		speedBtn.Text = "Disable SpeedHack"
+		enableSpeedHack()
+	else
+		speedBtn.Text = "Enable SpeedHack"
+		disableSpeedHack()
+	end
+end)
