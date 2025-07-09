@@ -1,0 +1,22 @@
+-- SynHack Pack Auto Loader (with SynUtility)
+
+local scripts = {
+    HVH_Lock = "https://raw.githubusercontent.com/synskibidi/HackPack/refs/heads/main/HVH%20Lock",
+    LegitLock = "https://raw.githubusercontent.com/synskibidi/HackPack/refs/heads/main/LegitLock",
+    SynESP = "https://raw.githubusercontent.com/synskibidi/HackPack/refs/heads/main/SynESP",
+    SynSpeed = "https://raw.githubusercontent.com/synskibidi/HackPack/refs/heads/main/SynSpeed",
+    SynUtility = "https://raw.githubusercontent.com/synskibidi/HackPack/refs/heads/main/SynUtility"
+}
+
+for name, url in pairs(scripts) do
+    task.spawn(function()
+        local success, result = pcall(function()
+            return loadstring(game:HttpGet(url))()
+        end)
+        if success then
+            print("[SynLoader] Loaded:", name)
+        else
+            warn("[SynLoader] Failed to load:", name, "|", result)
+        end
+    end)
+end
