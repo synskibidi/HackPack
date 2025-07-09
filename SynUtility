@@ -1,0 +1,127 @@
+-- SynUtility GUI with Force Third Person and Spin Bot
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- GUI Setup
+local screenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+screenGui.Name = "SynUtilityGui"
+
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 180, 0, 190)
+mainFrame.Position = UDim2.new(0.5, -90, 0.5, -95)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+
+local titleBar = Instance.new("Frame", mainFrame)
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+
+local titleLabel = Instance.new("TextLabel", titleBar)
+titleLabel.Text = "SynUtility V1.0"
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 18
+titleLabel.TextColor3 = Color3.new(1, 1, 1)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Size = UDim2.new(1, -30, 1, 0)
+titleLabel.Position = UDim2.new(0, 10, 0, 0)
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local minimizeBtn = Instance.new("TextButton", titleBar)
+minimizeBtn.Size = UDim2.new(0, 30, 1, 0)
+minimizeBtn.Position = UDim2.new(1, -30, 0, 0)
+minimizeBtn.Text = "-"
+minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.TextSize = 24
+minimizeBtn.TextColor3 = Color3.new(1, 1, 1)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+minimizeBtn.BorderSizePixel = 0
+
+local contentFrame = Instance.new("Frame", mainFrame)
+contentFrame.Size = UDim2.new(1, 0, 1, -30)
+contentFrame.Position = UDim2.new(0, 0, 0, 30)
+contentFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+
+local function createButton(text, posY)
+	local button = Instance.new("TextButton", contentFrame)
+	button.Size = UDim2.new(0, 160, 0, 40)
+	button.Position = UDim2.new(0, 10, 0, posY)
+	button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	button.BorderSizePixel = 0
+	button.Font = Enum.Font.GothamBold
+	button.TextSize = 20
+	button.TextColor3 = Color3.new(1, 1, 1)
+	button.Text = text
+	return button
+end
+
+local minimized = false
+minimizeBtn.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	contentFrame.Visible = not minimized
+	mainFrame.Size = minimized and UDim2.new(0, 180, 0, 30) or UDim2.new(0, 180, 0, 190)
+end)
+
+-- Third Person Toggle
+local ThirdPersonForced = false
+local thirdPersonButton = createButton("Third Person: OFF", 10)
+
+thirdPersonButton.MouseButton1Click:Connect(function()
+	ThirdPersonForced = not ThirdPersonForced
+	thirdPersonButton.Text = ThirdPersonForced and "Third Person: ON" or "Third Person: OFF"
+end)
+
+-- Spin Bot Toggle
+local SpinBotEnabled = false
+local spinBotButton = createButton("Spin Bot: OFF", 60)
+
+spinBotButton.MouseButton1Click:Connect(function()
+	SpinBotEnabled = not SpinBotEnabled
+	spinBotButton.Text = SpinBotEnabled and "Spin Bot: ON" or "Spin Bot: OFF"
+end)
+
+-- Force Third Person logic (your original SynVerse code)
+RunService.RenderStepped:Connect(function()
+	if ThirdPersonForced then
+		pcall(function()
+			LocalPlayer.CameraMode = Enum.CameraMode.Classic
+			Camera.CameraType = Enum.CameraType.Custom
+			Camera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+				LocalPlayer.Character.Humanoid.CameraOffset = Vector3.new(1.5, 0, 2)
+			end
+		end)
+	end
+end)
+
+task.spawn(function()
+	while true do
+		if ThirdPersonForced then
+			pcall(function()
+				LocalPlayer.CameraMode = Enum.CameraMode.Classic
+				Camera.CameraType = Enum.CameraType.Custom
+				Camera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+					LocalPlayer.Character.Humanoid.CameraOffset = Vector3.new(1.5, 0, 2)
+				end
+			end)
+		end
+		task.wait(1)
+	end
+end)
+
+-- Spin Bot logic
+RunService.Heartbeat:Connect(function(deltaTime)
+	if SpinBotEnabled and LocalPlayer.Character then
+		local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			-- Rotate around Y axis by 500 degrees per second converted to radians
+			local rotationSpeed = math.rad(500) * deltaTime
+			hrp.CFrame = hrp.CFrame * CFrame.Angles(0, rotationSpeed, 0)
+		end
+	end
+end)
