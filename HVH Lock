@@ -1,0 +1,160 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local localPlayer = Players.LocalPlayer
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SynSenseGui"
+screenGui.Parent = game:GetService("CoreGui")
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 180, 0, 150)
+mainFrame.Position = UDim2.new(0.5, -90, 0.5, -75)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+mainFrame.Active = true
+mainFrame.Draggable = true
+
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+titleBar.Parent = mainFrame
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Text = "SynSense HVH"
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 18
+titleLabel.TextColor3 = Color3.new(1, 1, 1)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Size = UDim2.new(1, -30, 1, 0)
+titleLabel.Position = UDim2.new(0, 10, 0, 0)
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = titleBar
+
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Size = UDim2.new(0, 30, 1, 0)
+minimizeBtn.Position = UDim2.new(1, -30, 0, 0)
+minimizeBtn.Text = "-"
+minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.TextSize = 24
+minimizeBtn.TextColor3 = Color3.new(1, 1, 1)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+minimizeBtn.BorderSizePixel = 0
+minimizeBtn.Parent = titleBar
+
+local contentFrame = Instance.new("Frame")
+contentFrame.Name = "ContentFrame"
+contentFrame.Size = UDim2.new(1, 0, 1, -30)
+contentFrame.Position = UDim2.new(0, 0, 0, 30)
+contentFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+contentFrame.Parent = mainFrame
+
+local function createCheckbox(name, parent, posY)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, -20, 0, 28)
+    container.Position = UDim2.new(0, 10, 0, posY)
+    container.BackgroundTransparency = 1
+    container.Parent = parent
+
+    local checkbox = Instance.new("TextButton")
+    checkbox.Size = UDim2.new(0, 20, 0, 20)
+    checkbox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    checkbox.BorderSizePixel = 0
+    checkbox.Position = UDim2.new(0, 0, 0, 4)
+    checkbox.Text = ""
+    checkbox.AutoButtonColor = false
+    checkbox.Parent = container
+
+    local checkmark = Instance.new("TextLabel")
+    checkmark.Size = UDim2.new(1, 0, 1, 0)
+    checkmark.BackgroundTransparency = 1
+    checkmark.Text = "✓"
+    checkmark.TextColor3 = Color3.new(0, 1, 0)
+    checkmark.TextScaled = true
+    checkmark.Visible = false
+    checkmark.Parent = checkbox
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -30, 1, 0)
+    label.Position = UDim2.new(0, 30, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = name
+    label.TextColor3 = Color3.new(1,1,1)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 16
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = container
+
+    local checked = false
+    checkbox.MouseButton1Click:Connect(function()
+        checked = not checked
+        checkmark.Visible = checked
+    end)
+
+    return {
+        container = container,
+        checkbox = checkbox,
+        getValue = function() return checked end,
+        setValue = function(val)
+            checked = val
+            checkmark.Visible = val
+        end
+    }
+end
+
+local aimbotCheckbox = createCheckbox("HVH Aimbot", contentFrame, 10)
+local wallCheckCheckbox = createCheckbox("Wall Check", contentFrame, 45)
+local teamCheckCheckbox = createCheckbox("Team Check", contentFrame, 80)
+
+local minimized = false
+minimizeBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    contentFrame.Visible = not minimized
+    if minimized then
+        mainFrame.Size = UDim2.new(0, 180, 0, 30)
+    else
+        mainFrame.Size = UDim2.new(0, 180, 0, 150)
+    end
+end)
+
+local function getClosestPlayer()
+    local closest = nil
+    local minDist = math.huge
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+            if teamCheckCheckbox.getValue() and player.Team == localPlayer.Team then
+                continue
+            end
+
+            if wallCheckCheckbox.getValue() then
+                local rayParams = RaycastParams.new()
+                rayParams.FilterDescendantsInstances = {localPlayer.Character}
+                rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+                local rayResult = workspace:Raycast(workspace.CurrentCamera.CFrame.Position, (player.Character.HumanoidRootPart.Position - workspace.CurrentCamera.CFrame.Position).Unit * (player.Character.HumanoidRootPart.Position - workspace.CurrentCamera.CFrame.Position).Magnitude, rayParams)
+                if rayResult and rayResult.Instance and not rayResult.Instance:IsDescendantOf(player.Character) then
+                    continue
+                end
+            end
+
+            local distance = (player.Character.HumanoidRootPart.Position - localPlayer.Character.HumanoidRootPart.Position).Magnitude
+            if distance < minDist then
+                minDist = distance
+                closest = player
+            end
+        end
+    end
+    return closest
+end
+
+RunService.RenderStepped:Connect(function()
+    if aimbotCheckbox.getValue() then
+        local target = getClosestPlayer()
+        if target and target.Character and target.Character:FindFirstChild("Head") then
+            local cam = workspace.CurrentCamera
+            cam.CFrame = CFrame.new(cam.CFrame.Position, target.Character.Head.Position)
+        end
+    end
+end)
