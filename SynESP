@@ -1,1 +1,260 @@
+-- SERVICES
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
 
+-- GUI SETUP
+local screenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+screenGui.Name = "SynESPGui"
+
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 180, 0, 150)
+mainFrame.Position = UDim2.new(0.5, -90, 0.5, -75)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+
+local titleBar = Instance.new("Frame", mainFrame)
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+
+local titleLabel = Instance.new("TextLabel", titleBar)
+titleLabel.Text = "SynESP V1.0"
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 18
+titleLabel.TextColor3 = Color3.new(1, 1, 1)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Size = UDim2.new(1, -30, 1, 0)
+titleLabel.Position = UDim2.new(0, 10, 0, 0)
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local minimizeBtn = Instance.new("TextButton", titleBar)
+minimizeBtn.Size = UDim2.new(0, 30, 1, 0)
+minimizeBtn.Position = UDim2.new(1, -30, 0, 0)
+minimizeBtn.Text = "-"
+minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.TextSize = 24
+minimizeBtn.TextColor3 = Color3.new(1, 1, 1)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+minimizeBtn.BorderSizePixel = 0
+
+local contentFrame = Instance.new("Frame", mainFrame)
+contentFrame.Size = UDim2.new(1, 0, 1, -30)
+contentFrame.Position = UDim2.new(0, 0, 0, 30)
+contentFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+
+-- CREATE CHECKBOX FUNCTION
+local function createCheckbox(name, posY)
+	local container = Instance.new("Frame", contentFrame)
+	container.Size = UDim2.new(1, -20, 0, 28)
+	container.Position = UDim2.new(0, 10, 0, posY)
+	container.BackgroundTransparency = 1
+
+	local box = Instance.new("TextButton", container)
+	box.Size = UDim2.new(0, 20, 0, 20)
+	box.Position = UDim2.new(0, 0, 0, 4)
+	box.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	box.BorderSizePixel = 0
+	box.Text = ""
+
+	local check = Instance.new("TextLabel", box)
+	check.Size = UDim2.new(1, 0, 1, 0)
+	check.Text = "✓"
+	check.TextScaled = true
+	check.BackgroundTransparency = 1
+	check.TextColor3 = Color3.fromRGB(0, 255, 0)
+	check.Visible = false
+
+	local label = Instance.new("TextLabel", container)
+	label.Position = UDim2.new(0, 30, 0, 0)
+	label.Size = UDim2.new(1, -30, 1, 0)
+	label.Text = name
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.Font = Enum.Font.Gotham
+	label.TextSize = 16
+	label.TextXAlignment = Enum.TextXAlignment.Left
+
+	local state = false
+	box.MouseButton1Click:Connect(function()
+		state = not state
+		check.Visible = state
+	end)
+
+	return function() return state end
+end
+
+local espToggle = createCheckbox("ESP Highlight", 10)
+local boxToggle = createCheckbox("Box ESP", 45)
+local hpToggle = createCheckbox("Healthbar ESP", 80)
+
+-- MINIMIZE BUTTON LOGIC
+local minimized = false
+minimizeBtn.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	contentFrame.Visible = not minimized
+	mainFrame.Size = minimized and UDim2.new(0, 180, 0, 30) or UDim2.new(0, 180, 0, 150)
+end)
+
+-- DRAWING API STORAGE
+local drawings = {}
+
+local function clearPlayerDrawings(player)
+	if drawings[player] then
+		for _, obj in pairs(drawings[player]) do
+			if obj then pcall(function() obj:Remove() end) end
+		end
+		drawings[player] = nil
+	end
+end
+
+local function initDrawings(player)
+	if drawings[player] then return end
+
+	local box = Drawing.new("Square")
+	box.Thickness = 1
+	box.Filled = false
+	box.Color = Color3.new(1, 1, 1)
+	box.Transparency = 1
+
+	local hpBar = Drawing.new("Square")
+	hpBar.Filled = true
+	hpBar.Thickness = 1
+	hpBar.Transparency = 1
+
+	drawings[player] = {
+		box = box,
+		hp = hpBar,
+	}
+end
+
+local function getBoundingBoxPositions(character)
+	-- Get relevant parts for bounding box
+	local parts = {}
+
+	local function tryAdd(partName)
+		local p = character:FindFirstChild(partName)
+		if p and p:IsA("BasePart") then
+			table.insert(parts, p)
+		end
+	end
+
+	tryAdd("Head")
+	tryAdd("HumanoidRootPart")
+	tryAdd("LeftUpperArm")
+	tryAdd("RightUpperArm")
+	tryAdd("LeftHand")
+	tryAdd("RightHand")
+	tryAdd("LeftFoot")
+	tryAdd("RightFoot")
+	tryAdd("LowerTorso")
+	tryAdd("UpperTorso")
+	tryAdd("Torso")
+	tryAdd("LeftLowerLeg")
+	tryAdd("RightLowerLeg")
+	tryAdd("LeftLowerArm")
+	tryAdd("RightLowerArm")
+
+	if #parts == 0 then
+		for _, obj in pairs(character:GetChildren()) do
+			if obj:IsA("BasePart") then
+				table.insert(parts, obj)
+			end
+		end
+	end
+
+	return parts
+end
+
+-- MAIN LOOP
+RunService.RenderStepped:Connect(function()
+	for _, player in pairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+			local char = player.Character
+
+			-- ESP Highlight
+			if espToggle() then
+				if not char:FindFirstChild("ESPHighlight") then
+					local h = Instance.new("Highlight")
+					h.Name = "ESPHighlight"
+					h.FillColor = Color3.fromRGB(255, 0, 0)
+					h.OutlineColor = Color3.new(0, 0, 0)
+					h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+					h.Adornee = char
+					h.Parent = char
+				end
+			else
+				local h = char:FindFirstChild("ESPHighlight")
+				if h then h:Destroy() end
+			end
+
+			local parts = getBoundingBoxPositions(char)
+			local screenPoints = {}
+
+			for _, part in pairs(parts) do
+				local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+				if onScreen then
+					table.insert(screenPoints, Vector2.new(screenPos.X, screenPos.Y))
+				end
+			end
+
+			if #screenPoints > 0 then
+				-- Calculate horizontal bounds
+				local minX, maxX = math.huge, -math.huge
+				for _, point in pairs(screenPoints) do
+					if point.X < minX then minX = point.X end
+					if point.X > maxX then maxX = point.X end
+				end
+
+				-- Use head and feet projected Y for vertical bounds to fix floating box
+				local headPos, headOnScreen = Camera:WorldToViewportPoint(char.Head.Position + Vector3.new(0, 0.3, 0))
+				local footPos, footOnScreen = Camera:WorldToViewportPoint(char.HumanoidRootPart.Position - Vector3.new(0, 3.5, 0))
+
+				if headOnScreen and footOnScreen then
+					local minY = headPos.Y
+					local maxY = footPos.Y
+
+					local boxPos = Vector2.new(minX, minY)
+					local boxSize = Vector2.new(maxX - minX, maxY - minY)
+
+					initDrawings(player)
+
+					-- Box ESP
+					if boxToggle() then
+						local box = drawings[player].box
+						box.Visible = true
+						box.Position = boxPos
+						box.Size = boxSize
+					else
+						drawings[player].box.Visible = false
+					end
+
+					-- Healthbar ESP
+					if hpToggle() then
+						local hum = char.Humanoid
+						local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+						local barHeight = boxSize.Y * ratio
+						local hp = drawings[player].hp
+						hp.Visible = true
+						hp.Size = Vector2.new(4, barHeight)
+						hp.Position = Vector2.new(boxPos.X + boxSize.X + 4, boxPos.Y + (boxSize.Y - barHeight))
+						hp.Color = Color3.fromRGB(255 * (1 - ratio), 255 * ratio, 0)
+					else
+						drawings[player].hp.Visible = false
+					end
+				end
+			else
+				if drawings[player] then
+					drawings[player].box.Visible = false
+					drawings[player].hp.Visible = false
+				end
+			end
+		else
+			clearPlayerDrawings(player)
+		end
+	end
+end)
+
+Players.PlayerRemoving:Connect(clearPlayerDrawings)
