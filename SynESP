@@ -201,44 +201,49 @@ RunService.RenderStepped:Connect(function()
 			end
 
 			if #screenPoints > 0 then
-				-- calculate min/max X and Y from all projected parts
-				local minX, minY = math.huge, math.huge
-				local maxX, maxY = -math.huge, -math.huge
-
+				-- Calculate horizontal bounds
+				local minX, maxX = math.huge, -math.huge
 				for _, point in pairs(screenPoints) do
 					if point.X < minX then minX = point.X end
-					if point.Y < minY then minY = point.Y end
 					if point.X > maxX then maxX = point.X end
-					if point.Y > maxY then maxY = point.Y end
 				end
 
-				local boxPos = Vector2.new(minX, minY)
-				local boxSize = Vector2.new(maxX - minX, maxY - minY)
+				-- Use head and feet projected Y for vertical bounds to fix floating box
+				local headPos, headOnScreen = Camera:WorldToViewportPoint(char.Head.Position + Vector3.new(0, 0.3, 0))
+				local footPos, footOnScreen = Camera:WorldToViewportPoint(char.HumanoidRootPart.Position - Vector3.new(0, 3.5, 0))
 
-				initDrawings(player)
+				if headOnScreen and footOnScreen then
+					local minY = headPos.Y
+					local maxY = footPos.Y
 
-				-- Box ESP
-				if boxToggle() then
-					local box = drawings[player].box
-					box.Visible = true
-					box.Position = boxPos
-					box.Size = boxSize
-				else
-					drawings[player].box.Visible = false
-				end
+					local boxPos = Vector2.new(minX, minY)
+					local boxSize = Vector2.new(maxX - minX, maxY - minY)
 
-				-- Healthbar ESP
-				if hpToggle() then
-					local hum = char.Humanoid
-					local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-					local barHeight = boxSize.Y * ratio
-					local hp = drawings[player].hp
-					hp.Visible = true
-					hp.Size = Vector2.new(4, barHeight)
-					hp.Position = Vector2.new(boxPos.X + boxSize.X + 4, boxPos.Y + (boxSize.Y - barHeight))
-					hp.Color = Color3.fromRGB(255 * (1 - ratio), 255 * ratio, 0)
-				else
-					drawings[player].hp.Visible = false
+					initDrawings(player)
+
+					-- Box ESP
+					if boxToggle() then
+						local box = drawings[player].box
+						box.Visible = true
+						box.Position = boxPos
+						box.Size = boxSize
+					else
+						drawings[player].box.Visible = false
+					end
+
+					-- Healthbar ESP
+					if hpToggle() then
+						local hum = char.Humanoid
+						local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+						local barHeight = boxSize.Y * ratio
+						local hp = drawings[player].hp
+						hp.Visible = true
+						hp.Size = Vector2.new(4, barHeight)
+						hp.Position = Vector2.new(boxPos.X + boxSize.X + 4, boxPos.Y + (boxSize.Y - barHeight))
+						hp.Color = Color3.fromRGB(255 * (1 - ratio), 255 * ratio, 0)
+					else
+						drawings[player].hp.Visible = false
+					end
 				end
 			else
 				if drawings[player] then
